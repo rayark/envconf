@@ -43,24 +43,28 @@ func loadStruct(prefix string, out *reflect.Value) {
 }
 
 func loadString(name string, out *reflect.Value) {
-	log.Printf("%s: string\n", name)
+
 	data, found := syscall.Getenv(name)
 	if !found {
+		log.Printf("envconf [ default ] %s\n", name)
 		return
 	}
+
 	out.SetString(data)
+	log.Printf("envconf [ loaded  ] %s\n", name)
 }
 
 func loadInteger(name string, out *reflect.Value) {
-	log.Printf("%s: integer\n", name)
 	data, found := syscall.Getenv(name)
 	if !found {
+		log.Printf("envvar %s: not found, use default value.\n", name)
 		return
 	}
-
 	d, err := strconv.ParseInt(data, 10, 64)
 	if err != nil {
-		log.Fatal("Failed to parse envionment variable: " + name)
+		log.Fatalf("envconf [ error  ] %s",  name)
 	}
+
 	out.SetInt(d)
+	log.Printf("envconf [ loaded  ] %s\n", name)
 }
