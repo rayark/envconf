@@ -59,8 +59,6 @@ func loadInteger(name string, out *reflect.Value) {
 		return
 	}
 	d, err := strconv.ParseInt(data, 10, 64)
-	if err != nil {
-	}
 
 	out.SetInt(d)
 }
@@ -68,11 +66,9 @@ func loadInteger(name string, out *reflect.Value) {
 func loadBool(name string, out *reflect.Value) {
 	data, found := syscall.Getenv(name)
 	if !found {
-		log.Printf("envconf [ default ] %s\n", name)
 		return
 	}
 
 	result := data != "0" && data != "false"
 	out.SetBool(result)
-	log.Printf("envconf [ loaded  ] %s\n", name)
 }
