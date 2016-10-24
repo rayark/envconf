@@ -20,6 +20,8 @@ func loadField(name string, out *reflect.Value) {
 		loadInteger(name, out)
 	case reflect.Struct:
 		loadStruct(name, out)
+	case reflect.Bool:
+		loadBool(name, out)
 	}
 }
 
@@ -61,4 +63,16 @@ func loadInteger(name string, out *reflect.Value) {
 	}
 
 	out.SetInt(d)
+}
+
+func loadBool(name string, out *reflect.Value) {
+	data, found := syscall.Getenv(name)
+	if !found {
+		log.Printf("envconf [ default ] %s\n", name)
+		return
+	}
+
+	result := data != "0" && data != "false"
+	out.SetBool(result)
+	log.Printf("envconf [ loaded  ] %s\n", name)
 }
