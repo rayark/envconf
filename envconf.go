@@ -1,6 +1,7 @@
 package envconf
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -18,10 +19,12 @@ func loadField(name string, out *reflect.Value) {
 		loadString(name, out)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		loadInteger(name, out)
-	case reflect.Struct:
-		loadStruct(name, out)
 	case reflect.Bool:
 		loadBool(name, out)
+	case reflect.Struct:
+		loadStruct(name, out)
+	default:
+		panic(fmt.Errorf("field type of %s cannot be recognized by envconf", name))
 	}
 }
 
@@ -44,7 +47,6 @@ func loadStruct(prefix string, out *reflect.Value) {
 }
 
 func loadString(name string, out *reflect.Value) {
-
 	data, found := syscall.Getenv(name)
 	if !found {
 		return
@@ -59,6 +61,9 @@ func loadInteger(name string, out *reflect.Value) {
 		return
 	}
 	d, err := strconv.ParseInt(data, 10, 64)
+	if err != nil {
+		panic(fmt.Errorf("field type of %s cannot be parsed into integer", name))
+	}
 
 	out.SetInt(d)
 }
