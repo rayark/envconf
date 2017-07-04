@@ -103,6 +103,12 @@ func loadBool(name string, out *reflect.Value) {
 		return
 	}
 
-	result := data != "0" && data != "false"
-	out.SetBool(result)
+	isTrue := data == "true" || data == "TRUE" || data == "True" || data == "1"
+	isFalse := data == "false" || data == "FALSE" || data == "False" || data == "0"
+
+	if !isTrue && !isFalse {
+		panic(fmt.Errorf("envvar %s should be a boolean, but cannot be recognized", name))
+	}
+
+	out.SetBool(isTrue)
 }
