@@ -13,6 +13,8 @@ func Load(prefix string, out interface{}) {
 	loadStruct(strings.ToUpper(prefix), &val)
 }
 
+var stringSliceType = reflect.TypeOf([]string{})
+
 func loadField(name string, out *reflect.Value) {
 	switch out.Kind() {
 	case reflect.String:
@@ -37,6 +39,16 @@ func loadField(name string, out *reflect.Value) {
 
 	case reflect.Struct:
 		loadStruct(name, out)
+
+	case reflect.Slice:
+		sliceType := out.Type()
+		switch sliceType {
+		case stringSliceType:
+			loadStringSlice(name, out)
+
+		default:
+			panic(fmt.Errorf("slice type %v on %v is not supported", sliceType, name))
+		}
 
 	default:
 		panic(fmt.Errorf("field type of %s cannot be recognized by envconf", name))
@@ -111,4 +123,23 @@ func loadBool(name string, out *reflect.Value) {
 	}
 
 	out.SetBool(isTrue)
+}
+
+func loadStringSlice(name string, out *reflect.Value) {
+	data, found := syscall.Getenv(name)
+	if !found {
+		return
+	}
+
+	strListRaw := strings.Split(data, ",")
+	strList := []string{}
+
+	for _, str := range strListRaw {
+		v := strings.TrimSpace(str)
+		if len(v) > 0 {
+			strList = append(strList, v)
+		}
+	}
+
+	out.Set(reflect.ValueOf(strList))
 }

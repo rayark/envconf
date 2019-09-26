@@ -6,7 +6,8 @@ import (
 )
 
 type Config struct {
-	Mongo MongoConfig `env:"mongo"`
+	Mongo     MongoConfig `env:"mongo"`
+	AppIDList []string    `env:"app_id_list"`
 }
 
 type MongoConfig struct {
@@ -21,6 +22,7 @@ func TestLoad(t *testing.T) {
 	os.Setenv("TEST_MONGO_NODES", "www.example.com")
 	os.Setenv("TEST_MONGO_PORT", "332")
 	os.Setenv("TEST_MONGO_DEBUG", "false")
+	os.Setenv("TEST_APP_ID_LIST", " aa, bb ,cc ,dd")
 
 	var config Config
 	Load("TEST", &config)
@@ -39,5 +41,17 @@ func TestLoad(t *testing.T) {
 
 	if config.Mongo.Debug {
 		t.FailNow()
+	}
+
+	expAppIDList := []string{"aa", "bb", "cc", "dd"}
+
+	if len(config.AppIDList) != len(expAppIDList) {
+		t.FailNow()
+	}
+
+	for i := range config.AppIDList {
+		if config.AppIDList[i] != expAppIDList[i] {
+			t.FailNow()
+		}
 	}
 }
