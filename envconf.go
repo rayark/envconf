@@ -8,6 +8,10 @@ import (
 	"syscall"
 )
 
+// Load loads config from environment variables into the provided
+// pointer-to-struct `out`.
+// The names of loaded environment variables all start with capitialized
+// `prefix`.
 func Load(prefix string, out interface{}) {
 	val := reflect.ValueOf(out).Elem()
 	loadStruct(strings.ToUpper(prefix), &val)
@@ -104,6 +108,7 @@ func loadUint(name string, out *reflect.Value) {
 
 	d, err := strconv.ParseUint(data, 10, 64)
 	if err != nil {
+		panic(fmt.Errorf("field type of %s cannot be parsed into unsigned integer", name))
 	}
 
 	out.SetUint(d)
