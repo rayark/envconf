@@ -2,13 +2,15 @@ package envconf
 
 import (
 	"os"
+	"reflect"
 	"testing"
 )
 
 type Config struct {
-	Mongo     MongoConfig `env:"mongo"`
-	AppIDList []string    `env:"app_id_list"`
-	Replicas  uint        `env:"replicas"`
+	Mongo          MongoConfig `env:"mongo"`
+	AppIDList      []string    `env:"app_id_list"`
+	Replicas       uint        `env:"replicas"`
+	EmbeddedConfig `env:",inline"`
 
 	unexported       string
 	UnTagged         float64  // unsupported types cannot be tagged with env
@@ -27,12 +29,27 @@ type MongoConfig struct {
 	Debug      bool   `env:"debug"`
 }
 
+type EmbeddedConfig struct {
+	StringInEmbeddedStrcuture string `env:"string_in_embedded_structure"`
+}
+
+func assert(t testing.TB, field string, expected, received interface{}) {
+	if !reflect.DeepEqual(expected, received) {
+		t.Errorf("%v is not loaded correctly.\nExpecting: %v %v\nReceived:  %v %v",
+			field,
+			reflect.TypeOf(expected), expected,
+			reflect.TypeOf(received), received,
+		)
+	}
+}
+
 func TestLoad(t *testing.T) {
 	os.Setenv("TEST_MONGO_NODES", "www.example.com")
 	os.Setenv("TEST_MONGO_PORT", "332")
 	os.Setenv("TEST_MONGO_DEBUG", "false")
 	os.Setenv("TEST_APP_ID_LIST", " aa, bb ,cc ,dd")
 	os.Setenv("TEST_REPLICAS", "3")
+	os.Setenv("TEST_STRING_IN_EMBEDDED_STRUCTURE", "a-z")
 
 	initConfig := Config{
 		unexported:       "unexported string",
@@ -47,71 +64,21 @@ func TestLoad(t *testing.T) {
 	config := initConfig
 	Load("TEST", &config)
 
-	if config.Mongo.Port != 332 {
-		t.FailNow()
-	}
+	assert(t, "Mongo.Port", 332, config.Mongo.Port)
+	assert(t, "Mongo.Nodes", "www.example.com", config.Mongo.Nodes)
+	assert(t, "Mongo.Database", "", config.Mongo.Database)
+	assert(t, "Mongo.Debug", false, config.Mongo.Debug)
+	assert(t, "Replicas", uint(3), config.Replicas)
+	assert(t, "StringInEmbeddedStrcuture", "a-z", config.StringInEmbeddedStrcuture)
+	assert(t, "AppIDList", []string{"aa", "bb", "cc", "dd"}, config.AppIDList)
 
-	if config.Mongo.Nodes != "www.example.com" {
-		t.FailNow()
-	}
-
-	if config.Mongo.Database != "" {
-		t.FailNow()
-	}
-
-	if config.Mongo.Debug {
-		t.FailNow()
-	}
-
-	expAppIDList := []string{"aa", "bb", "cc", "dd"}
-
-	if len(config.AppIDList) != len(expAppIDList) {
-		t.FailNow()
-	}
-
-	for i := range config.AppIDList {
-		if config.AppIDList[i] != expAppIDList[i] {
-			t.FailNow()
-		}
-	}
-
-	if config.Replicas != uint(3) {
-		t.FailNow()
-	}
-
-	if config.unexported != initConfig.unexported {
-		t.FailNow()
-	}
-
-	if config.UnTagged != initConfig.UnTagged {
-		t.FailNow()
-	}
-
-	if config.UnLoadedInt != initConfig.UnLoadedInt {
-		t.FailNow()
-	}
-
-	if config.UnLoadedUint != initConfig.UnLoadedUint {
-		t.FailNow()
-	}
-
-	if config.UnLoadedBool != initConfig.UnLoadedBool {
-		t.FailNow()
-	}
-
-	if config.UnLoadedStr != initConfig.UnLoadedStr {
-		t.FailNow()
-	}
-
-	if len(config.UnLoadedStrSlice) != len(initConfig.UnLoadedStrSlice) {
-		t.FailNow()
-	}
-
-	for i := range config.UnLoadedStrSlice {
-		if config.UnLoadedStrSlice[i] != initConfig.UnLoadedStrSlice[i] {
-			t.FailNow()
-		}
-	}
+	assert(t, "unexported", initConfig.unexported, config.unexported)
+	assert(t, "UnTagged", initConfig.UnTagged, config.UnTagged)
+	assert(t, "UnLoadedInt", initConfig.UnLoadedInt, config.UnLoadedInt)
+	assert(t, "UnLoadedUint", initConfig.UnLoadedUint, config.UnLoadedUint)
+	assert(t, "UnLoadedBool", initConfig.UnLoadedBool, config.UnLoadedBool)
+	assert(t, "UnLoadedStr", initConfig.UnLoadedStr, config.UnLoadedStr)
+	assert(t, "UnLoadedStrSlice", initConfig.UnLoadedStrSlice, config.UnLoadedStrSlice)
 }
 
 func TestTaggedUnsupportedTypeShouldPanic(t *testing.T) {

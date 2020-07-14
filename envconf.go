@@ -63,15 +63,33 @@ func loadStruct(prefix string, out *reflect.Value) {
 	t := out.Type()
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		if field.Anonymous {
-			continue
-		}
-		name := field.Tag.Get("env")
-		if name == "" {
-			continue
+
+		tag := field.Tag.Get("env")
+		nameAndOpts := strings.Split(tag, ",")
+		inline := false
+		if len(nameAndOpts) > 1 {
+			for _, opt := range nameAndOpts[1:] {
+				switch opt {
+				case "inline":
+					inline = true
+				}
+			}
 		}
 
-		name = prefix + "_" + strings.ToUpper(name)
+		var name string
+		if inline {
+			name = prefix
+		} else {
+			if field.Anonymous {
+				continue
+			}
+			name = nameAndOpts[0]
+			if name == "" {
+				continue
+			}
+			name = prefix + "_" + strings.ToUpper(name)
+		}
+
 		fval := out.Field(i)
 		loadField(name, &fval)
 	}
