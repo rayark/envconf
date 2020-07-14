@@ -10,8 +10,11 @@ import (
 
 // Load loads config from environment variables into the provided
 // pointer-to-struct `out`.
-// The names of loaded environment variables all start with capitialized
-// `prefix`.
+// The names of loaded environment variables are uppercase.
+//
+// Warning:
+// 1. Fields without env tag will be ignored.
+// 2. Duplicated field tags will be assigned with the same environment variable.
 func Load(prefix string, out interface{}) {
 	val := reflect.ValueOf(out).Elem()
 	loadStruct(strings.ToUpper(prefix), &val)
