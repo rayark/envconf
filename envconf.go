@@ -10,8 +10,11 @@ import (
 
 // Load loads config from environment variables into the provided
 // pointer-to-struct `out`.
-// The names of loaded environment variables all start with capitialized
-// `prefix`.
+// The names of loaded environment variables are uppercase and all start with the given `prefix`.
+//
+// Warning:
+// 1. Fields without env tag will be ignored.
+// 2. Duplicated field tags will be assigned with the same environment variable.
 func Load(prefix string, out interface{}) {
 	val := reflect.ValueOf(out).Elem()
 	loadStruct(strings.ToUpper(prefix), &val)
@@ -63,15 +66,36 @@ func loadStruct(prefix string, out *reflect.Value) {
 	t := out.Type()
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		if field.Anonymous {
-			continue
-		}
-		name := field.Tag.Get("env")
-		if name == "" {
-			continue
+
+		tag := field.Tag.Get("env")
+		nameAndOpts := strings.Split(tag, ",")
+		inline := false
+		if len(nameAndOpts) > 1 {
+			for _, opt := range nameAndOpts[1:] {
+				switch opt {
+				case "inline":
+					inline = true
+				}
+			}
 		}
 
-		name = prefix + "_" + strings.ToUpper(name)
+		var name string
+		if inline {
+			if field.Type.Kind() != reflect.Struct {
+				panic("Option ,inline needs a struct value field")
+			}
+			name = prefix
+		} else {
+			if field.Anonymous {
+				continue
+			}
+			name = nameAndOpts[0]
+			if name == "" {
+				continue
+			}
+			name = prefix + "_" + strings.ToUpper(name)
+		}
+
 		fval := out.Field(i)
 		loadField(name, &fval)
 	}

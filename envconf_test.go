@@ -2,13 +2,15 @@ package envconf
 
 import (
 	"os"
+	"reflect"
 	"testing"
 )
 
 type Config struct {
-	Mongo     MongoConfig `env:"mongo"`
-	AppIDList []string    `env:"app_id_list"`
-	Replicas  uint        `env:"replicas"`
+	Mongo          MongoConfig `env:"mongo"`
+	AppIDList      []string    `env:"app_id_list"`
+	Replicas       uint        `env:"replicas"`
+	EmbeddedConfig `env:",inline"`
 
 	unexported       string
 	UnTagged         float64  // unsupported types cannot be tagged with env
@@ -27,12 +29,34 @@ type MongoConfig struct {
 	Debug      bool   `env:"debug"`
 }
 
+type EmbeddedConfig struct {
+	StringInEmbeddedStructure string `env:"string_in_embedded_structure"`
+	IntInEmbeddedStructure    int    `env:"int_in_embedded_structure"`
+}
+
+func assertEqual(t testing.TB, fieldName string, expected, received interface{}) {
+	if !reflect.DeepEqual(expected, received) {
+		t.Errorf("%v is not loaded correctly.\nExpecting: %v %v\nReceived:  %v %v",
+			fieldName,
+			reflect.TypeOf(expected), expected,
+			reflect.TypeOf(received), received,
+		)
+	}
+}
+func assertPanic(t testing.TB) {
+	if r := recover(); r == nil {
+		t.Errorf("this test should panic")
+	}
+}
+
 func TestLoad(t *testing.T) {
 	os.Setenv("TEST_MONGO_NODES", "www.example.com")
 	os.Setenv("TEST_MONGO_PORT", "332")
 	os.Setenv("TEST_MONGO_DEBUG", "false")
 	os.Setenv("TEST_APP_ID_LIST", " aa, bb ,cc ,dd")
 	os.Setenv("TEST_REPLICAS", "3")
+	os.Setenv("TEST_STRING_IN_EMBEDDED_STRUCTURE", "a-z")
+	os.Setenv("TEST_INT_IN_EMBEDDED_STRUCTURE", "19")
 
 	initConfig := Config{
 		unexported:       "unexported string",
@@ -47,79 +71,26 @@ func TestLoad(t *testing.T) {
 	config := initConfig
 	Load("TEST", &config)
 
-	if config.Mongo.Port != 332 {
-		t.FailNow()
-	}
+	assertEqual(t, "Mongo.Port", 332, config.Mongo.Port)
+	assertEqual(t, "Mongo.Nodes", "www.example.com", config.Mongo.Nodes)
+	assertEqual(t, "Mongo.Database", "", config.Mongo.Database)
+	assertEqual(t, "Mongo.Debug", false, config.Mongo.Debug)
+	assertEqual(t, "Replicas", uint(3), config.Replicas)
+	assertEqual(t, "AppIDList", []string{"aa", "bb", "cc", "dd"}, config.AppIDList)
+	assertEqual(t, "StringInEmbeddedStrcuture", "a-z", config.StringInEmbeddedStructure)
+	assertEqual(t, "IntInEmbeddedStrcuture", 19, config.IntInEmbeddedStructure)
 
-	if config.Mongo.Nodes != "www.example.com" {
-		t.FailNow()
-	}
-
-	if config.Mongo.Database != "" {
-		t.FailNow()
-	}
-
-	if config.Mongo.Debug {
-		t.FailNow()
-	}
-
-	expAppIDList := []string{"aa", "bb", "cc", "dd"}
-
-	if len(config.AppIDList) != len(expAppIDList) {
-		t.FailNow()
-	}
-
-	for i := range config.AppIDList {
-		if config.AppIDList[i] != expAppIDList[i] {
-			t.FailNow()
-		}
-	}
-
-	if config.Replicas != uint(3) {
-		t.FailNow()
-	}
-
-	if config.unexported != initConfig.unexported {
-		t.FailNow()
-	}
-
-	if config.UnTagged != initConfig.UnTagged {
-		t.FailNow()
-	}
-
-	if config.UnLoadedInt != initConfig.UnLoadedInt {
-		t.FailNow()
-	}
-
-	if config.UnLoadedUint != initConfig.UnLoadedUint {
-		t.FailNow()
-	}
-
-	if config.UnLoadedBool != initConfig.UnLoadedBool {
-		t.FailNow()
-	}
-
-	if config.UnLoadedStr != initConfig.UnLoadedStr {
-		t.FailNow()
-	}
-
-	if len(config.UnLoadedStrSlice) != len(initConfig.UnLoadedStrSlice) {
-		t.FailNow()
-	}
-
-	for i := range config.UnLoadedStrSlice {
-		if config.UnLoadedStrSlice[i] != initConfig.UnLoadedStrSlice[i] {
-			t.FailNow()
-		}
-	}
+	assertEqual(t, "unexported", initConfig.unexported, config.unexported)
+	assertEqual(t, "UnTagged", initConfig.UnTagged, config.UnTagged)
+	assertEqual(t, "UnLoadedInt", initConfig.UnLoadedInt, config.UnLoadedInt)
+	assertEqual(t, "UnLoadedUint", initConfig.UnLoadedUint, config.UnLoadedUint)
+	assertEqual(t, "UnLoadedBool", initConfig.UnLoadedBool, config.UnLoadedBool)
+	assertEqual(t, "UnLoadedStr", initConfig.UnLoadedStr, config.UnLoadedStr)
+	assertEqual(t, "UnLoadedStrSlice", initConfig.UnLoadedStrSlice, config.UnLoadedStrSlice)
 }
 
 func TestTaggedUnsupportedTypeShouldPanic(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("this test should panic")
-		}
-	}()
+	defer assertPanic(t)
 
 	type Invalid struct {
 		Unsupported float32 `env:"unsupported"`
@@ -131,11 +102,7 @@ func TestTaggedUnsupportedTypeShouldPanic(t *testing.T) {
 }
 
 func TestInvalidIntShouldPanic(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("this test should panic")
-		}
-	}()
+	defer assertPanic(t)
 
 	type InvalidInt struct {
 		InvalidInt int `env:"invalidint"`
@@ -147,11 +114,7 @@ func TestInvalidIntShouldPanic(t *testing.T) {
 }
 
 func TestInvalidUintShouldPanic(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("this test should panic")
-		}
-	}()
+	defer assertPanic(t)
 
 	type InvalidUint struct {
 		InvalidUint uint `env:"invaliduint"`
@@ -163,11 +126,7 @@ func TestInvalidUintShouldPanic(t *testing.T) {
 }
 
 func TestInvalidBoolShouldPanic(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("this test should panic")
-		}
-	}()
+	defer assertPanic(t)
 
 	type InvalidBool struct {
 		InvalidBool bool `env:"invalidbool"`
@@ -176,4 +135,53 @@ func TestInvalidBoolShouldPanic(t *testing.T) {
 	os.Setenv("FAIL_INVALIDBOOL", "ture")
 	var inv InvalidBool
 	Load("FAIL", &inv)
+}
+
+func TestInlineWithoutComma(t *testing.T) {
+	os.Setenv("TEST_STRING_IN_EMBEDDED_STRUCTURE", "a-z")
+	os.Setenv("TEST_INT_IN_EMBEDDED_STRUCTURE", "19")
+
+	// no comma
+	config := struct {
+		EmbeddedConfig `env:"inline"`
+	}{}
+	Load("TEST", &config)
+
+	assertEqual(t, "StringInEmbeddedStructure", "", config.StringInEmbeddedStructure)
+	assertEqual(t, "IntInEmbeddedStructure", 0, config.IntInEmbeddedStructure)
+}
+
+func TestInlineWithTagName(t *testing.T) {
+	os.Setenv("TEST_STR", "outer")
+	os.Setenv("TEST_STRING_IN_EMBEDDED_STRUCTURE", "a-z")
+	os.Setenv("TEST_INT_IN_EMBEDDED_STRUCTURE", "19")
+	os.Setenv("TEST_STRING_IN_STRUCTURE", "in struct")
+	os.Setenv("TEST_INT_IN_STRUCTURE", "1239")
+
+	// inline option ignores tag name
+	type structure struct {
+		StringInStructure string `env:"string_in_structure"`
+		IntInStructure    int    `env:"int_in_structure"`
+	}
+	config := struct {
+		Str            string `env:"str"`
+		EmbeddedConfig `env:"str,inline"`
+		Struct         structure `env:"str,inline"`
+	}{}
+	Load("TEST", &config)
+
+	assertEqual(t, "Str", "outer", config.Str)
+	assertEqual(t, "StringInEmbeddedStructure", "a-z", config.StringInEmbeddedStructure)
+	assertEqual(t, "IntInEmbeddedStructure", 19, config.IntInEmbeddedStructure)
+	assertEqual(t, "StringInStructure", "in struct", config.Struct.StringInStructure)
+	assertEqual(t, "IntInStructure", 1239, config.Struct.IntInStructure)
+}
+
+func TestInlineWithoutStruct(t *testing.T) {
+	defer assertPanic(t)
+
+	config := struct {
+		Str string `env:",inline"`
+	}{}
+	Load("TEST", &config)
 }
