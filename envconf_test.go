@@ -254,3 +254,48 @@ func TestNoTag(t *testing.T) {
 	assertEqual(t, "StringInEmbeddedStructure", "a-z", config.StringInEmbeddedStructure)
 	assertEqual(t, "IntInEmbeddedStructure", 19, config.IntInEmbeddedStructure)
 }
+
+func TestDuplicatedKeys(t *testing.T) {
+	defer assertPanic(t)
+	os.Setenv("TEST_DUPLICATED_STRING", "duplication")
+
+	config := struct {
+		Str    string `env:"duplicated_string"`
+		Struct struct {
+			Str string `env:"string"`
+		} `env:"duplicated"`
+	}{}
+	Load("TEST", &config)
+}
+func TestDuplicatedKeysBetweenInlineStructs(t *testing.T) {
+	defer assertPanic(t)
+	os.Setenv("TEST_DUPLICATED_STRING", "duplication")
+
+	type em1 struct {
+		Str1 string `env:"duplicated_string"`
+	}
+	type em2 struct {
+		Str2 string `env:"duplicated_string"`
+	}
+	config := struct {
+		em1 `env:",inline"`
+		em2 `env:",inline"`
+	}{}
+	Load("TEST", &config)
+}
+func TestDuplicatedKeysBetweenStructs(t *testing.T) {
+	defer assertPanic(t)
+	os.Setenv("TEST_DUPLICATED_STRING", "duplication")
+
+	type em1 struct {
+		Str1 string `env:"duplicated_string"`
+	}
+	type em2 struct {
+		Str2 string `env:"string"`
+	}
+	config := struct {
+		EM1 em1 `env:"em"`
+		EM2 em2 `env:"em_duplicated"`
+	}{}
+	Load("TEST", &config)
+}

@@ -17,41 +17,71 @@ import (
 // 2. Duplicated field tags will be assigned with the same environment variable.
 func Load(prefix string, out interface{}) {
 	val := reflect.ValueOf(out).Elem()
-	loadStruct(strings.ToUpper(prefix), &val)
+	loader := loader{
+		usedKeys: map[string]struct{}{},
+	}
+	loader.loadStruct(strings.ToUpper(prefix), &val)
 }
 
 var stringSliceType = reflect.TypeOf([]string{})
 
-func loadField(name string, out *reflect.Value) {
+type loader struct {
+	usedKeys map[string]struct{}
+}
+
+func (l *loader) useKey(name string) error {
+	if _, ok := l.usedKeys[name]; ok {
+		return fmt.Errorf("Duplicated key %v", name)
+	}
+	l.usedKeys[name] = struct{}{}
+	return nil
+}
+
+func (l *loader) loadField(name string, out *reflect.Value) {
 	switch out.Kind() {
 	case reflect.String:
-		loadString(name, out)
+		if err := l.useKey(name); err != nil {
+			panic(err)
+		}
+		l.loadString(name, out)
 
 	case reflect.Int,
 		reflect.Int8,
 		reflect.Int16,
 		reflect.Int32,
 		reflect.Int64:
-		loadInt(name, out)
+		if err := l.useKey(name); err != nil {
+			panic(err)
+		}
+		l.loadInt(name, out)
 
 	case reflect.Uint,
 		reflect.Uint8,
 		reflect.Uint16,
 		reflect.Uint32,
 		reflect.Uint64:
-		loadUint(name, out)
+		if err := l.useKey(name); err != nil {
+			panic(err)
+		}
+		l.loadUint(name, out)
 
 	case reflect.Bool:
-		loadBool(name, out)
+		if err := l.useKey(name); err != nil {
+			panic(err)
+		}
+		l.loadBool(name, out)
 
 	case reflect.Struct:
-		loadStruct(name, out)
+		l.loadStruct(name, out)
 
 	case reflect.Slice:
 		sliceType := out.Type()
 		switch sliceType {
 		case stringSliceType:
-			loadStringSlice(name, out)
+			if err := l.useKey(name); err != nil {
+				panic(err)
+			}
+			l.loadStringSlice(name, out)
 
 		default:
 			panic(fmt.Errorf("slice type %v on %v is not supported", sliceType, name))
@@ -62,7 +92,7 @@ func loadField(name string, out *reflect.Value) {
 	}
 }
 
-func loadStruct(prefix string, out *reflect.Value) {
+func (l *loader) loadStruct(prefix string, out *reflect.Value) {
 	t := out.Type()
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
@@ -98,11 +128,11 @@ func loadStruct(prefix string, out *reflect.Value) {
 		}
 
 		fval := out.Field(i)
-		loadField(name, &fval)
+		l.loadField(name, &fval)
 	}
 }
 
-func loadString(name string, out *reflect.Value) {
+func (l *loader) loadString(name string, out *reflect.Value) {
 	data, found := syscall.Getenv(name)
 	if !found {
 		return
@@ -111,7 +141,7 @@ func loadString(name string, out *reflect.Value) {
 	out.SetString(data)
 }
 
-func loadInt(name string, out *reflect.Value) {
+func (l *loader) loadInt(name string, out *reflect.Value) {
 	data, found := syscall.Getenv(name)
 	if !found {
 		return
@@ -125,7 +155,7 @@ func loadInt(name string, out *reflect.Value) {
 	out.SetInt(d)
 }
 
-func loadUint(name string, out *reflect.Value) {
+func (l *loader) loadUint(name string, out *reflect.Value) {
 	data, found := syscall.Getenv(name)
 	if !found {
 		return
@@ -139,7 +169,7 @@ func loadUint(name string, out *reflect.Value) {
 	out.SetUint(d)
 }
 
-func loadBool(name string, out *reflect.Value) {
+func (l *loader) loadBool(name string, out *reflect.Value) {
 	data, found := syscall.Getenv(name)
 	if !found {
 		return
@@ -155,7 +185,7 @@ func loadBool(name string, out *reflect.Value) {
 	out.SetBool(isTrue)
 }
 
-func loadStringSlice(name string, out *reflect.Value) {
+func (l *loader) loadStringSlice(name string, out *reflect.Value) {
 	data, found := syscall.Getenv(name)
 	if !found {
 		return
