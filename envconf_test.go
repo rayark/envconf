@@ -186,6 +186,18 @@ func TestInlineWithoutStruct(t *testing.T) {
 	Load("TEST", &config)
 }
 
+func TestEmbeddedStructureWithoutInline(t *testing.T) {
+	os.Setenv("TEST_EMBEDDED_STRING_IN_EMBEDDED_STRUCTURE", "a-z")
+	os.Setenv("TEST_EMBEDDED_INT_IN_EMBEDDED_STRUCTURE", "19")
+
+	configWithTag := struct {
+		EmbeddedConfig `env:"embedded"`
+	}{}
+	Load("TEST", &configWithTag)
+	assertEqual(t, "StringInEmbeddedStructure", "a-z", configWithTag.StringInEmbeddedStructure)
+	assertEqual(t, "IntInEmbeddedStructure", 19, configWithTag.IntInEmbeddedStructure)
+}
+
 func TestIgnoringSpecificTag(t *testing.T) {
 	// invalid
 	os.Setenv("TEST_-", "panics")
@@ -194,6 +206,8 @@ func TestIgnoringSpecificTag(t *testing.T) {
 	os.Setenv("TEST_IGNOREDINT", "123")
 	os.Setenv("TEST_IGNOREDSTRUCT_IGNOREDSTRINGINSTRUCT", "ignored")
 	os.Setenv("TEST_IGNOREDSTRUCT_IGNOREDINTINSTRUCT", "12345")
+	os.Setenv("TEST_EMBEDDEDCONFIG_STRING_IN_EMBEDDED_STRUCTURE", "a-z")
+	os.Setenv("TEST_EMBEDDEDCONFIG_INT_IN_EMBEDDED_STRUCTURE", "19")
 
 	config := struct {
 		IgnoredString string `env:"-"`
@@ -202,6 +216,7 @@ func TestIgnoringSpecificTag(t *testing.T) {
 			IgnoredStringInStruct string
 			IgnoredIntInStruct    int
 		} `env:"-"`
+		EmbeddedConfig `env:"-"`
 	}{}
 	Load("TEST", &config)
 
@@ -209,14 +224,17 @@ func TestIgnoringSpecificTag(t *testing.T) {
 	assertEqual(t, "IgnoredInt", 0, config.IgnoredInt)
 	assertEqual(t, "IgnoredStringInStruct", "", config.IgnoredStruct.IgnoredStringInStruct)
 	assertEqual(t, "IgnoredIntInStruct", 0, config.IgnoredStruct.IgnoredIntInStruct)
+	assertEqual(t, "StringInEmbeddedStructure", "", config.StringInEmbeddedStructure)
+	assertEqual(t, "IntInEmbeddedStructure", 0, config.IntInEmbeddedStructure)
 }
 
 func TestNoTag(t *testing.T) {
-	// auto named
 	os.Setenv("TEST_AUTONAMEDSTRING", "auto named")
 	os.Setenv("TEST_AUTONAMEDINT", "321")
 	os.Setenv("TEST_AUTONAMEDSTRUCT_AUTONAMEDSTRINGINSTRUCT", "auto named in struct")
 	os.Setenv("TEST_AUTONAMEDSTRUCT_AUTONAMEDINTINSTRUCT", "54321")
+	os.Setenv("TEST_EMBEDDEDCONFIG_STRING_IN_EMBEDDED_STRUCTURE", "a-z")
+	os.Setenv("TEST_EMBEDDEDCONFIG_INT_IN_EMBEDDED_STRUCTURE", "19")
 
 	config := struct {
 		AutoNamedString string
@@ -225,6 +243,7 @@ func TestNoTag(t *testing.T) {
 			AutoNamedStringInStruct string
 			AutoNamedIntInStruct    int
 		}
+		EmbeddedConfig
 	}{}
 	Load("TEST", &config)
 
@@ -232,4 +251,6 @@ func TestNoTag(t *testing.T) {
 	assertEqual(t, "AutoNamedInt", 321, config.AutoNamedInt)
 	assertEqual(t, "AutoNamedStringInStruct", "auto named in struct", config.AutoNamedStruct.AutoNamedStringInStruct)
 	assertEqual(t, "AutoNamedIntInStruct", 54321, config.AutoNamedStruct.AutoNamedIntInStruct)
+	assertEqual(t, "StringInEmbeddedStructure", "a-z", config.StringInEmbeddedStructure)
+	assertEqual(t, "IntInEmbeddedStructure", 19, config.IntInEmbeddedStructure)
 }
