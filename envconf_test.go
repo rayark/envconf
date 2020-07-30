@@ -13,7 +13,7 @@ type Config struct {
 	EmbeddedConfig `env:",inline"`
 
 	unexported       string
-	UnTagged         float64  // unsupported types cannot be tagged with env
+	UnTagged         float64  `env:"-"` // unsupported types must be ignored explicitly
 	UnLoadedInt      int      `env:"unloadedint"`
 	UnLoadedUint     uint     `env:"unloadeduint"`
 	UnLoadedBool     bool     `env:"unloadedbool"`
@@ -184,4 +184,52 @@ func TestInlineWithoutStruct(t *testing.T) {
 		Str string `env:",inline"`
 	}{}
 	Load("TEST", &config)
+}
+
+func TestIgnoringSpecificTag(t *testing.T) {
+	// invalid
+	os.Setenv("TEST_-", "panics")
+	// ignored
+	os.Setenv("TEST_IGNOREDSTRING", "ignored")
+	os.Setenv("TEST_IGNOREDINT", "123")
+	os.Setenv("TEST_IGNOREDSTRUCT_IGNOREDSTRINGINSTRUCT", "ignored")
+	os.Setenv("TEST_IGNOREDSTRUCT_IGNOREDINTINSTRUCT", "12345")
+
+	config := struct {
+		IgnoredString string `env:"-"`
+		IgnoredInt    int    `env:"-"`
+		IgnoredStruct struct {
+			IgnoredStringInStruct string
+			IgnoredIntInStruct    int
+		} `env:"-"`
+	}{}
+	Load("TEST", &config)
+
+	assertEqual(t, "IgnoredString", "", config.IgnoredString)
+	assertEqual(t, "IgnoredInt", 0, config.IgnoredInt)
+	assertEqual(t, "IgnoredStringInStruct", "", config.IgnoredStruct.IgnoredStringInStruct)
+	assertEqual(t, "IgnoredIntInStruct", 0, config.IgnoredStruct.IgnoredIntInStruct)
+}
+
+func TestNoTag(t *testing.T) {
+	// auto named
+	os.Setenv("TEST_AUTONAMEDSTRING", "auto named")
+	os.Setenv("TEST_AUTONAMEDINT", "321")
+	os.Setenv("TEST_AUTONAMEDSTRUCT_AUTONAMEDSTRINGINSTRUCT", "auto named in struct")
+	os.Setenv("TEST_AUTONAMEDSTRUCT_AUTONAMEDINTINSTRUCT", "54321")
+
+	config := struct {
+		AutoNamedString string
+		AutoNamedInt    int
+		AutoNamedStruct struct {
+			AutoNamedStringInStruct string
+			AutoNamedIntInStruct    int
+		}
+	}{}
+	Load("TEST", &config)
+
+	assertEqual(t, "AutoNamedString", "auto named", config.AutoNamedString)
+	assertEqual(t, "AutoNamedInt", 321, config.AutoNamedInt)
+	assertEqual(t, "AutoNamedStringInStruct", "auto named in struct", config.AutoNamedStruct.AutoNamedStringInStruct)
+	assertEqual(t, "AutoNamedIntInStruct", 54321, config.AutoNamedStruct.AutoNamedIntInStruct)
 }
