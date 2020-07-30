@@ -90,9 +90,6 @@ func loadStruct(prefix string, out *reflect.Value) {
 			}
 			name = prefix
 		} else {
-			if field.Anonymous {
-				continue
-			}
 			name = nameAndOpts[0]
 			if name == "" {
 				name = field.Name
