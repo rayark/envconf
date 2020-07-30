@@ -155,17 +155,26 @@ func TestInlineWithTagName(t *testing.T) {
 	os.Setenv("TEST_STR", "outer")
 	os.Setenv("TEST_STRING_IN_EMBEDDED_STRUCTURE", "a-z")
 	os.Setenv("TEST_INT_IN_EMBEDDED_STRUCTURE", "19")
+	os.Setenv("TEST_STRING_IN_STRUCTURE", "in struct")
+	os.Setenv("TEST_INT_IN_STRUCTURE", "1239")
 
 	// inline option ignores tag name
+	type structure struct {
+		StringInStructure string `env:"string_in_structure"`
+		IntInStructure    int    `env:"int_in_structure"`
+	}
 	config := struct {
 		Str            string `env:"str"`
 		EmbeddedConfig `env:"str,inline"`
+		Struct         structure `env:"str,inline"`
 	}{}
 	Load("TEST", &config)
 
 	assertEqual(t, "Str", "outer", config.Str)
 	assertEqual(t, "StringInEmbeddedStructure", "a-z", config.StringInEmbeddedStructure)
 	assertEqual(t, "IntInEmbeddedStructure", 19, config.IntInEmbeddedStructure)
+	assertEqual(t, "StringInStructure", "in struct", config.Struct.StringInStructure)
+	assertEqual(t, "IntInStructure", 1239, config.Struct.IntInStructure)
 }
 
 func TestInlineWithoutStruct(t *testing.T) {
