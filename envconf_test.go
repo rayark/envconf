@@ -167,3 +167,12 @@ func TestInlineWithTagName(t *testing.T) {
 	assertEqual(t, "StringInEmbeddedStructure", "a-z", config.StringInEmbeddedStructure)
 	assertEqual(t, "IntInEmbeddedStructure", 19, config.IntInEmbeddedStructure)
 }
+
+func TestInlineWithoutStruct(t *testing.T) {
+	defer assertPanic(t)
+
+	config := struct {
+		Str string `env:",inline"`
+	}{}
+	Load("TEST", &config)
+}

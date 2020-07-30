@@ -81,6 +81,9 @@ func loadStruct(prefix string, out *reflect.Value) {
 
 		var name string
 		if inline {
+			if field.Type.Kind() != reflect.Struct {
+				panic("Option ,inline needs a struct value field")
+			}
 			name = prefix
 		} else {
 			if field.Anonymous {
