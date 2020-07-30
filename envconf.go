@@ -95,7 +95,7 @@ func loadStruct(prefix string, out *reflect.Value) {
 			}
 			name = nameAndOpts[0]
 			if name == "" {
-				continue
+				name = field.Name
 			}
 			name = prefix + "_" + strings.ToUpper(name)
 		}
