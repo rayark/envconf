@@ -10,7 +10,7 @@ import (
 
 // Load loads config from environment variables into the provided
 // pointer-to-struct `out`.
-// The names of loaded environment variables are uppercase.
+// The names of loaded environment variables are uppercase and all start with the given `prefix`.
 //
 // Warning:
 // 1. Fields without env tag will be ignored.
