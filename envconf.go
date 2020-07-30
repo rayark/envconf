@@ -68,6 +68,10 @@ func loadStruct(prefix string, out *reflect.Value) {
 		field := t.Field(i)
 
 		tag := field.Tag.Get("env")
+		// ignore "-"
+		if tag == "-" {
+			continue
+		}
 		nameAndOpts := strings.Split(tag, ",")
 		inline := false
 		if len(nameAndOpts) > 1 {
