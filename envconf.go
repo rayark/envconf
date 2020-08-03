@@ -38,50 +38,47 @@ func (l *loader) useKey(name string) error {
 }
 
 func (l *loader) loadField(name string, out *reflect.Value) {
+	kind := out.Kind()
+	if kind == reflect.Struct {
+		l.loadStruct(name, out)
+		return
+	}
+
+	if err := l.useKey(name); err != nil {
+		panic(err)
+	}
+
 	switch out.Kind() {
 	case reflect.String:
-		if err := l.useKey(name); err != nil {
-			panic(err)
-		}
 		l.loadString(name, out)
+		return
 
 	case reflect.Int,
 		reflect.Int8,
 		reflect.Int16,
 		reflect.Int32,
 		reflect.Int64:
-		if err := l.useKey(name); err != nil {
-			panic(err)
-		}
 		l.loadInt(name, out)
+		return
 
 	case reflect.Uint,
 		reflect.Uint8,
 		reflect.Uint16,
 		reflect.Uint32,
 		reflect.Uint64:
-		if err := l.useKey(name); err != nil {
-			panic(err)
-		}
 		l.loadUint(name, out)
+		return
 
 	case reflect.Bool:
-		if err := l.useKey(name); err != nil {
-			panic(err)
-		}
 		l.loadBool(name, out)
-
-	case reflect.Struct:
-		l.loadStruct(name, out)
+		return
 
 	case reflect.Slice:
 		sliceType := out.Type()
 		switch sliceType {
 		case stringSliceType:
-			if err := l.useKey(name); err != nil {
-				panic(err)
-			}
 			l.loadStringSlice(name, out)
+			return
 
 		default:
 			panic(fmt.Errorf("slice type %v on %v is not supported", sliceType, name))
