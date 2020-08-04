@@ -1,6 +1,8 @@
 package envconf
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -97,6 +99,18 @@ func TestTaggedUnsupportedTypeShouldPanic(t *testing.T) {
 	}
 
 	os.Setenv("FAIL_UNSUPPORTED", "55.66")
+	var invalid Invalid
+	Load("FAIL", &invalid)
+}
+
+func TestUnsupportedSliceShouldPanic(t *testing.T) {
+	defer assertPanic(t)
+
+	type Invalid struct {
+		Unsupported []map[string]string
+	}
+
+	os.Setenv("FAIL_UNSUPPORTED", "[]")
 	var invalid Invalid
 	Load("FAIL", &invalid)
 }
@@ -298,4 +312,30 @@ func TestDuplicatedKeysBetweenStructs(t *testing.T) {
 		EM2 em2 `env:"em_duplicated"`
 	}{}
 	Load("TEST", &config)
+}
+
+type customLogger struct {
+	buf bytes.Buffer
+}
+
+func (l *customLogger) Debugf(format string, args ...interface{}) {
+	l.buf.WriteString(fmt.Sprintf(format, args...) + "\n")
+}
+
+func TestLogger(t *testing.T) {
+	logger := customLogger{}
+	config := struct {
+		String  string `env:"string"`
+		Integer int    `env:"integer"`
+	}{}
+	Load("TEST", &config, LoggerOption(&logger))
+
+	expected := "searching for environment variable: TEST_STRING\nsearching for environment variable: TEST_INTEGER\n"
+	received := logger.buf.String()
+	if expected != received {
+		t.Errorf(
+			"expecting %s,\nreceiving %s",
+			expected, received,
+		)
+	}
 }

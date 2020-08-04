@@ -8,6 +8,18 @@ import (
 	"syscall"
 )
 
+type Option func(*loader)
+
+func LoggerOption(logger logger) Option {
+	return func(l *loader) {
+		l.logger = logger
+	}
+}
+
+type logger interface {
+	Debugf(string, ...interface{})
+}
+
 // Load loads config from environment variables into the provided
 // pointer-to-struct `out`.
 // The names of loaded environment variables are uppercase and all start with the given `prefix`.
@@ -15,18 +27,26 @@ import (
 // Warning:
 // 1. Fields without env tag will be ignored.
 // 2. Duplicated field tags will be assigned with the same environment variable.
-func Load(prefix string, out interface{}) {
+func Load(prefix string, out interface{}, opts ...Option) {
 	val := reflect.ValueOf(out).Elem()
-	loader := loader{
-		usedKeys: map[string]struct{}{},
+	loader := loader{}
+	loader.usedKeys = map[string]struct{}{}
+	for _, opt := range opts {
+		opt(&loader)
 	}
 	loader.loadStruct(strings.ToUpper(prefix), &val)
 }
 
-var stringSliceType = reflect.TypeOf([]string{})
-
 type loader struct {
 	usedKeys map[string]struct{}
+
+	logger logger
+}
+
+func (l *loader) logf(format string, args ...interface{}) {
+	if l.logger != nil {
+		l.logger.Debugf(format, args...)
+	}
 }
 
 func (l *loader) useKey(name string) error {
@@ -34,8 +54,11 @@ func (l *loader) useKey(name string) error {
 		return fmt.Errorf("Duplicated key %v", name)
 	}
 	l.usedKeys[name] = struct{}{}
+	l.logf("searching for environment variable: %s", name)
 	return nil
 }
+
+var stringSliceType = reflect.TypeOf([]string{})
 
 func (l *loader) loadField(name string, out *reflect.Value) {
 	kind := out.Kind()
