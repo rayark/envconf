@@ -1,8 +1,6 @@
 package envconf
 
 import (
-	"bytes"
-	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -314,28 +312,24 @@ func TestDuplicatedKeysBetweenStructs(t *testing.T) {
 	Load("TEST", &config)
 }
 
-type customLogger struct {
-	buf bytes.Buffer
-}
-
-func (l *customLogger) Debugf(format string, args ...interface{}) {
-	l.buf.WriteString(fmt.Sprintf(format, args...) + "\n")
-}
-
 func TestLogger(t *testing.T) {
-	logger := customLogger{}
+	os.Setenv("TEST_INTEGER", "-3")
+	os.Setenv("TEST_UNSIGNED_INTEGER", "3")
+
+	result := map[string]bool{}
 	config := struct {
 		String  string `env:"string"`
 		Integer int    `env:"integer"`
+		Struct  struct {
+			Unsigned uint     `env:"unsigned_integer"`
+			Bool     bool     `env:"bool"`
+			StrSlice []string `env:"string_slice"`
+		} `env:",inline"`
 	}{}
-	Load("TEST", &config, LoggerOption(&logger))
+	Load("TEST", &config, CustomHandleEnvironmentVariablesOption(func(status map[string]bool) {
+		result = status
+	}))
 
-	expected := "searching for environment variable: TEST_STRING\nsearching for environment variable: TEST_INTEGER\n"
-	received := logger.buf.String()
-	if expected != received {
-		t.Errorf(
-			"expecting %s,\nreceiving %s",
-			expected, received,
-		)
-	}
+	expected := map[string]bool{"TEST_STRING": false, "TEST_INTEGER": true, "TEST_UNSIGNED_INTEGER": true, "TEST_BOOL": false, "TEST_STRING_SLICE": false}
+	assertEqual(t, "", expected, result)
 }
