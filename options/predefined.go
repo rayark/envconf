@@ -4,16 +4,22 @@ import (
 	"encoding/json"
 	"io"
 	"log"
-
-	"gitlab.rayark.com/backend/envconf"
 )
 
-func LogStatusOfEnvironmentVariables(w io.Writer) envconf.Option {
-	return envconf.CustomHandleEnvironmentVariablesOption(func(status map[string]bool) {
+// LogStatusOfEnvVars will log the status of environment variables used by given structure.
+// The message is in JSON format.
+func LogStatusOfEnvVars(w io.Writer) func(map[string]bool) {
+	return func(status map[string]bool) {
+		logger := log.New(w, "", 0)
+
 		result := map[string]interface{}{}
 		result["message"] = "envconf: show environment variables used by configuration and whether they are set"
 		result["environment-variables"] = status
-		b, _ := json.MarshalIndent(result, "", "    ")
-		log.New(w, "", 0).Printf(string(b))
-	})
+		b, err := json.MarshalIndent(result, "", "    ")
+		if err != nil {
+			logger.Printf("envconf encounters an error: %v", err.Error())
+			return
+		}
+		logger.Printf(string(b))
+	}
 }
