@@ -326,7 +326,7 @@ func TestLogger(t *testing.T) {
 			StrSlice []string `env:"string_slice"`
 		} `env:",inline"`
 	}{}
-	Load("TEST", &config, CustomHandleEnvironmentVariablesOption(func(status map[string]bool) {
+	Load("TEST", &config, CustomHandleEnvVarsOption(func(status map[string]bool) {
 		result = status
 	}))
 
