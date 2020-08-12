@@ -36,6 +36,7 @@ type EmbeddedConfig struct {
 
 func assertEqual(t testing.TB, fieldName string, expected, received interface{}) {
 	if !reflect.DeepEqual(expected, received) {
+		t.Helper()
 		t.Errorf("%v is not loaded correctly.\nExpecting: %v %v\nReceived:  %v %v",
 			fieldName,
 			reflect.TypeOf(expected), expected,
@@ -45,6 +46,7 @@ func assertEqual(t testing.TB, fieldName string, expected, received interface{})
 }
 func assertPanic(t testing.TB) {
 	if r := recover(); r == nil {
+		t.Helper()
 		t.Errorf("this test should panic")
 	}
 }
