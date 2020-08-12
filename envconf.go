@@ -17,8 +17,8 @@ import (
 // 2. Duplicated field tags will be assigned with the same environment variable.
 func Load(prefix string, out interface{}, opts ...Option) {
 	loader := loader{}
-	loader.envStatus = map[string]bool{}
-	loader.handleEnvironmentVariables = func(map[string]bool) {}
+	loader.envStatuses = map[string]*EnvStatus{}
+	loader.handleEnvironmentVariables = func(map[string]*EnvStatus) {}
 	for _, opt := range opts {
 		opt(&loader)
 	}
@@ -26,20 +26,28 @@ func Load(prefix string, out interface{}, opts ...Option) {
 	val := reflect.ValueOf(out).Elem()
 	loader.loadStruct(strings.ToUpper(prefix), &val)
 
-	loader.handleEnvironmentVariables(loader.envStatus)
+	loader.handleEnvironmentVariables(loader.envStatuses)
 }
 
 type loader struct {
-	handleEnvironmentVariables func(map[string]bool)
-	envStatus                  map[string]bool
+	handleEnvironmentVariables func(map[string]*EnvStatus)
+	envStatuses                map[string]*EnvStatus
 }
 
 func (l *loader) useKey(name string) error {
-	if _, ok := l.envStatus[name]; ok {
+	if _, ok := l.envStatuses[name]; ok {
 		return fmt.Errorf("Duplicated key %v", name)
 	}
-	l.envStatus[name] = false
+	l.envStatuses[name] = &EnvStatus{}
 	return nil
+}
+
+type EnvStatus struct {
+	Loaded bool
+}
+
+func (e *EnvStatus) SetLoaded() {
+	e.Loaded = true
 }
 
 var stringSliceType = reflect.TypeOf([]string{})
@@ -141,7 +149,7 @@ func (l *loader) loadString(name string, out *reflect.Value) {
 	if !found {
 		return
 	}
-	l.envStatus[name] = true
+	l.envStatuses[name].SetLoaded()
 
 	out.SetString(data)
 }
@@ -151,7 +159,7 @@ func (l *loader) loadInt(name string, out *reflect.Value) {
 	if !found {
 		return
 	}
-	l.envStatus[name] = true
+	l.envStatuses[name].SetLoaded()
 
 	d, err := strconv.ParseInt(data, 10, 64)
 	if err != nil {
@@ -166,7 +174,7 @@ func (l *loader) loadUint(name string, out *reflect.Value) {
 	if !found {
 		return
 	}
-	l.envStatus[name] = true
+	l.envStatuses[name].SetLoaded()
 
 	d, err := strconv.ParseUint(data, 10, 64)
 	if err != nil {
@@ -181,7 +189,7 @@ func (l *loader) loadBool(name string, out *reflect.Value) {
 	if !found {
 		return
 	}
-	l.envStatus[name] = true
+	l.envStatuses[name].SetLoaded()
 
 	isTrue := data == "true" || data == "TRUE" || data == "True" || data == "1"
 	isFalse := data == "false" || data == "FALSE" || data == "False" || data == "0"
@@ -198,7 +206,7 @@ func (l *loader) loadStringSlice(name string, out *reflect.Value) {
 	if !found {
 		return
 	}
-	l.envStatus[name] = true
+	l.envStatuses[name].SetLoaded()
 
 	strListRaw := strings.Split(data, ",")
 	strList := []string{}

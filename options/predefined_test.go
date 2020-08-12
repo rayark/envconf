@@ -18,7 +18,7 @@ func TestLogger(t *testing.T) {
 		Integer int    `env:"integer"`
 	}{}
 	buf := bytes.NewBuffer(nil)
-	envconf.Load("TEST", &config, envconf.CustomHandleEnvVarsOption(options.LogStatusOfEnvVars(buf)))
+	envconf.Load("TEST", &config, envconf.CustomHandleEnvVarsOption(options.MakeJSONLogger(buf)))
 
 	if buf.String() == "" {
 		t.Errorf("failed to log environment variable status")

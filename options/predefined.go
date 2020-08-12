@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+
+	"gitlab.rayark.com/backend/envconf"
 )
 
-// LogStatusOfEnvVars will log the status of environment variables used by given structure.
+// MakeJSONLogger will log the status of environment variables used by given structure.
 // The message is in JSON format.
-func LogStatusOfEnvVars(w io.Writer) func(map[string]bool) {
-	return func(status map[string]bool) {
+func MakeJSONLogger(w io.Writer) func(map[string]*envconf.EnvStatus) {
+	return func(status map[string]*envconf.EnvStatus) {
 		logger := log.New(w, "", 0)
 
 		result := map[string]interface{}{}

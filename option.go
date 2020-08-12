@@ -7,7 +7,7 @@ type Option func(*loader)
 //
 // The map keys are the environment variable names that are checked by envconf,
 // and the values present whether the corresponding environment variables are set.
-func CustomHandleEnvVarsOption(cb func(map[string]bool)) Option {
+func CustomHandleEnvVarsOption(cb func(map[string]*EnvStatus)) Option {
 	return func(l *loader) {
 		l.handleEnvironmentVariables = cb
 	}

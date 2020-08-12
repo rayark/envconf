@@ -318,7 +318,7 @@ func TestLogger(t *testing.T) {
 	os.Setenv("TEST_INTEGER", "-3")
 	os.Setenv("TEST_UNSIGNED_INTEGER", "3")
 
-	result := map[string]bool{}
+	result := map[string]*EnvStatus{}
 	config := struct {
 		String  string `env:"string"`
 		Integer int    `env:"integer"`
@@ -328,10 +328,16 @@ func TestLogger(t *testing.T) {
 			StrSlice []string `env:"string_slice"`
 		} `env:",inline"`
 	}{}
-	Load("TEST", &config, CustomHandleEnvVarsOption(func(status map[string]bool) {
+	Load("TEST", &config, CustomHandleEnvVarsOption(func(status map[string]*EnvStatus) {
 		result = status
 	}))
 
-	expected := map[string]bool{"TEST_STRING": false, "TEST_INTEGER": true, "TEST_UNSIGNED_INTEGER": true, "TEST_BOOL": false, "TEST_STRING_SLICE": false}
+	expected := map[string]*EnvStatus{
+		"TEST_STRING":           {false},
+		"TEST_INTEGER":          {true},
+		"TEST_UNSIGNED_INTEGER": {true},
+		"TEST_BOOL":             {false},
+		"TEST_STRING_SLICE":     {false},
+	}
 	assertEqual(t, "", expected, result)
 }
