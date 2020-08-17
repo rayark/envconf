@@ -36,6 +36,7 @@ type EmbeddedConfig struct {
 
 func assertEqual(t testing.TB, fieldName string, expected, received interface{}) {
 	if !reflect.DeepEqual(expected, received) {
+		t.Helper()
 		t.Errorf("%v is not loaded correctly.\nExpecting: %v %v\nReceived:  %v %v",
 			fieldName,
 			reflect.TypeOf(expected), expected,
@@ -45,6 +46,7 @@ func assertEqual(t testing.TB, fieldName string, expected, received interface{})
 }
 func assertPanic(t testing.TB) {
 	if r := recover(); r == nil {
+		t.Helper()
 		t.Errorf("this test should panic")
 	}
 }
@@ -97,6 +99,18 @@ func TestTaggedUnsupportedTypeShouldPanic(t *testing.T) {
 	}
 
 	os.Setenv("FAIL_UNSUPPORTED", "55.66")
+	var invalid Invalid
+	Load("FAIL", &invalid)
+}
+
+func TestUnsupportedSliceShouldPanic(t *testing.T) {
+	defer assertPanic(t)
+
+	type Invalid struct {
+		Unsupported []map[string]string
+	}
+
+	os.Setenv("FAIL_UNSUPPORTED", "[]")
 	var invalid Invalid
 	Load("FAIL", &invalid)
 }
@@ -298,4 +312,32 @@ func TestDuplicatedKeysBetweenStructs(t *testing.T) {
 		EM2 em2 `env:"em_duplicated"`
 	}{}
 	Load("TEST", &config)
+}
+
+func TestLogger(t *testing.T) {
+	os.Setenv("TEST_INTEGER", "-3")
+	os.Setenv("TEST_UNSIGNED_INTEGER", "3")
+
+	result := map[string]*EnvStatus{}
+	config := struct {
+		String  string `env:"string"`
+		Integer int    `env:"integer"`
+		Struct  struct {
+			Unsigned uint     `env:"unsigned_integer"`
+			Bool     bool     `env:"bool"`
+			StrSlice []string `env:"string_slice"`
+		} `env:",inline"`
+	}{}
+	Load("TEST", &config, CustomHandleEnvVarsOption(func(status map[string]*EnvStatus) {
+		result = status
+	}))
+
+	expected := map[string]*EnvStatus{
+		"TEST_STRING":           {false},
+		"TEST_INTEGER":          {true},
+		"TEST_UNSIGNED_INTEGER": {true},
+		"TEST_BOOL":             {false},
+		"TEST_STRING_SLICE":     {false},
+	}
+	assertEqual(t, "", expected, result)
 }
