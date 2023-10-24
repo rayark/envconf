@@ -4,6 +4,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type Config struct {
@@ -12,13 +13,17 @@ type Config struct {
 	Replicas       uint        `env:"replicas"`
 	EmbeddedConfig `env:",inline"`
 
+	Duration time.Duration `env:"duration"`
+	I64      int64         `env:"i64"`
+
 	unexported       string
-	UnTagged         float64  `env:"-"` // unsupported types must be ignored explicitly
-	UnLoadedInt      int      `env:"unloadedint"`
-	UnLoadedUint     uint     `env:"unloadeduint"`
-	UnLoadedBool     bool     `env:"unloadedbool"`
-	UnLoadedStr      string   `env:"unloadedstring"`
-	UnLoadedStrSlice []string `env:"unloadedstrslice"`
+	UnTagged         float64       `env:"-"` // unsupported types must be ignored explicitly
+	UnLoadedInt      int           `env:"unloadedint"`
+	UnLoadedUint     uint          `env:"unloadeduint"`
+	UnLoadedBool     bool          `env:"unloadedbool"`
+	UnLoadedStr      string        `env:"unloadedstring"`
+	UnLoadedStrSlice []string      `env:"unloadedstrslice"`
+	UnLoadedDuration time.Duration `env:"unloadedduration"`
 }
 
 type MongoConfig struct {
@@ -59,6 +64,8 @@ func TestLoad(t *testing.T) {
 	os.Setenv("TEST_REPLICAS", "3")
 	os.Setenv("TEST_STRING_IN_EMBEDDED_STRUCTURE", "a-z")
 	os.Setenv("TEST_INT_IN_EMBEDDED_STRUCTURE", "19")
+	os.Setenv("TEST_DURATION", "10m")
+	os.Setenv("TEST_I64", "600")
 
 	initConfig := Config{
 		unexported:       "unexported string",
@@ -81,6 +88,8 @@ func TestLoad(t *testing.T) {
 	assertEqual(t, "AppIDList", []string{"aa", "bb", "cc", "dd"}, config.AppIDList)
 	assertEqual(t, "StringInEmbeddedStrcuture", "a-z", config.StringInEmbeddedStructure)
 	assertEqual(t, "IntInEmbeddedStrcuture", 19, config.IntInEmbeddedStructure)
+	assertEqual(t, "Duration", time.Minute*10, config.Duration)
+	assertEqual(t, "int64", int64(600), config.I64)
 
 	assertEqual(t, "unexported", initConfig.unexported, config.unexported)
 	assertEqual(t, "UnTagged", initConfig.UnTagged, config.UnTagged)
@@ -124,6 +133,18 @@ func TestInvalidIntShouldPanic(t *testing.T) {
 
 	os.Setenv("FAIL_INVALIDINT", "not a int")
 	var inv InvalidInt
+	Load("FAIL", &inv)
+}
+
+func TestInvalidDurationShouldPanic(t *testing.T) {
+	defer assertPanic(t)
+
+	type InvalidDuration struct {
+		InvalidDuration time.Duration `env:"invalidduration"`
+	}
+
+	os.Setenv("FAIL_INVALIDDURATION", "not a duration")
+	var inv InvalidDuration
 	Load("FAIL", &inv)
 }
 
