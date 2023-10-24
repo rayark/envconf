@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 // Load loads config from environment variables into the provided
@@ -68,11 +69,18 @@ func (l *loader) loadField(name string, out *reflect.Value) {
 		l.loadString(name, out)
 		return
 
+	case reflect.Int64:
+		switch out.Type() {
+		case reflect.TypeOf(time.Duration(0)):
+			l.loadDuration(name, out)
+			return
+		}
+		fallthrough
+
 	case reflect.Int,
 		reflect.Int8,
 		reflect.Int16,
-		reflect.Int32,
-		reflect.Int64:
+		reflect.Int32:
 		l.loadInt(name, out)
 		return
 
@@ -152,6 +160,20 @@ func (l *loader) loadString(name string, out *reflect.Value) {
 	l.envStatuses[name].SetLoaded()
 
 	out.SetString(data)
+}
+
+func (l *loader) loadDuration(name string, out *reflect.Value) {
+	data, found := syscall.Getenv(name)
+	if !found {
+		return
+	}
+	l.envStatuses[name].SetLoaded()
+
+	d, err := time.ParseDuration(data)
+	if err != nil {
+		panic(fmt.Errorf("field type of %s cannot be parsed into time duration", name))
+	}
+	out.SetInt(int64(d))
 }
 
 func (l *loader) loadInt(name string, out *reflect.Value) {
