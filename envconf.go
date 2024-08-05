@@ -106,7 +106,9 @@ func (l *loader) loadField(name string, out *reflect.Value) {
 		default:
 			panic(fmt.Errorf("slice type %v on %v is not supported", sliceType, name))
 		}
-
+	case reflect.Float64:
+		l.loadFloat64(name, out)
+		return
 	default:
 		panic(fmt.Errorf("field type of %s cannot be recognized by envconf", name))
 	}
@@ -204,6 +206,21 @@ func (l *loader) loadUint(name string, out *reflect.Value) {
 	}
 
 	out.SetUint(d)
+}
+
+func (l *loader) loadFloat64(name string, out *reflect.Value) {
+	data, found := syscall.Getenv(name)
+	if !found {
+		return
+	}
+	l.envStatuses[name].SetLoaded()
+
+	d, err := strconv.ParseFloat(data, 64)
+	if err != nil {
+		panic(fmt.Errorf("field type of %s cannot be parsed into float", name))
+	}
+
+	out.SetFloat(d)
 }
 
 func (l *loader) loadBool(name string, out *reflect.Value) {
