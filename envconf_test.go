@@ -1,6 +1,7 @@
 package envconf
 
 import (
+	"math"
 	"os"
 	"reflect"
 	"testing"
@@ -15,9 +16,10 @@ type Config struct {
 
 	Duration time.Duration `env:"duration"`
 	I64      int64         `env:"i64"`
+	F64      float64       `env:"f64"`
 
 	unexported       string
-	UnTagged         float64       `env:"-"` // unsupported types must be ignored explicitly
+	UnLoadedFloat64  float64       `env:"unloadedfloat64"`
 	UnLoadedInt      int           `env:"unloadedint"`
 	UnLoadedUint     uint          `env:"unloadeduint"`
 	UnLoadedBool     bool          `env:"unloadedbool"`
@@ -66,10 +68,11 @@ func TestLoad(t *testing.T) {
 	os.Setenv("TEST_INT_IN_EMBEDDED_STRUCTURE", "19")
 	os.Setenv("TEST_DURATION", "10m")
 	os.Setenv("TEST_I64", "600")
+	os.Setenv("TEST_F64", "3.14")
 
 	initConfig := Config{
 		unexported:       "unexported string",
-		UnTagged:         98.76,
+		UnLoadedFloat64:  math.MaxFloat64,
 		UnLoadedInt:      -5,
 		UnLoadedUint:     9,
 		UnLoadedBool:     true,
@@ -90,9 +93,10 @@ func TestLoad(t *testing.T) {
 	assertEqual(t, "IntInEmbeddedStrcuture", 19, config.IntInEmbeddedStructure)
 	assertEqual(t, "Duration", time.Minute*10, config.Duration)
 	assertEqual(t, "int64", int64(600), config.I64)
+	assertEqual(t, "float64", 3.14, config.F64)
 
 	assertEqual(t, "unexported", initConfig.unexported, config.unexported)
-	assertEqual(t, "UnTagged", initConfig.UnTagged, config.UnTagged)
+	assertEqual(t, "UnLoadedFloat64", initConfig.UnLoadedFloat64, config.UnLoadedFloat64)
 	assertEqual(t, "UnLoadedInt", initConfig.UnLoadedInt, config.UnLoadedInt)
 	assertEqual(t, "UnLoadedUint", initConfig.UnLoadedUint, config.UnLoadedUint)
 	assertEqual(t, "UnLoadedBool", initConfig.UnLoadedBool, config.UnLoadedBool)
@@ -169,6 +173,18 @@ func TestInvalidBoolShouldPanic(t *testing.T) {
 
 	os.Setenv("FAIL_INVALIDBOOL", "ture")
 	var inv InvalidBool
+	Load("FAIL", &inv)
+}
+
+func TestInvalidFloatShouldPanic(t *testing.T) {
+	defer assertPanic(t)
+
+	type InvalidFloat struct {
+		InvalidFloat float64 `env:"invalidfloat"`
+	}
+
+	os.Setenv("FAIL_INVALIDFLOAT", "not a float")
+	var inv InvalidFloat
 	Load("FAIL", &inv)
 }
 
